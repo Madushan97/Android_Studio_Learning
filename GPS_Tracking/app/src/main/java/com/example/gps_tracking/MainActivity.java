@@ -16,7 +16,9 @@ import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderApi;
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
 
@@ -30,14 +32,16 @@ public class MainActivity extends AppCompatActivity {
 
     Switch sw_locationsupdates, sw_gps;
 
-//  variable to remember if we are tracking location or not
+    //  variable to remember if we are tracking location or not
     LocationRequest locationRequest;
+
+    LocationCallback locationCallBack;
 
     boolean updateOn = false;
 
 //  location request is a config file for all setting related to FusedLocationProviderClient
 
-//  Google's API for location services. The majority of the app functions using this class
+    //  Google's API for location services. The majority of the app functions using this class
     FusedLocationProviderClient fusedLocationProviderClient;
 
     @Override
@@ -63,23 +67,84 @@ public class MainActivity extends AppCompatActivity {
         locationRequest.setFastestInterval(1000 * FAST_UPDATE_INTERVAL);
         locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
 
+//        event that is triggered whenever the update interval is met
+
+        locationCallBack = new LocationCallback() {
+
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                super.onLocationResult(locationResult);
+
+//                save the location
+                updateUIValues(locationResult.getLastLocation());
+            }
+        };
+
         sw_gps.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(sw_gps.isChecked()){
+                if (sw_gps.isChecked()) {
 //                    most accurate
                     locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
                     tv_sensor.setText("Using GPS sensor");
-                }
-                else {
+                } else {
                     locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
                     tv_sensor.setText("Using Tower + WIFI");
                 }
             }
         });
 
+        sw_locationsupdates.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (sw_locationsupdates.isChecked()) {
+//                    turn on location tracking
+                    startLocationUpdates();
+                } else {
+//                    turn off tracking
+                    stopLocationUpdates();
+                }
+            }
+        });
+
         updateGPS();
     }  // end onCreate method
+
+
+    private void stopLocationUpdates() {
+
+        tv_updates.setText("Location is NOT being tracked");
+        tv_lat.setText("Not Tracking location");
+        tv_lon.setText("Not Tracking location");
+        tv_speed.setText("Not Tracking location");
+        tv_address.setText("Not Tracking location");
+        tv_accuracy.setText("Not Tracking location");
+        tv_altitude.setText("Not Tracking location");
+        tv_sensor.setText("Not Tracking location");
+
+        fusedLocationProviderClient.removeLocationUpdates(locationCallBack);
+    }
+
+    private void startLocationUpdates() {
+
+        tv_updates.setText("Location is being tracked");
+
+//        --------------------------------------------------------------
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+//        --------------------------------------------------------------
+
+        fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallBack, null);
+        updateGPS();
+    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
